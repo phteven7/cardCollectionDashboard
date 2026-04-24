@@ -16,7 +16,7 @@
     "launcher": "node launcher/server.cjs --dist dist --open",
     "electron:start": "electron .",
     "electron:dist": "electron-builder",
-    "package:windows": "electron-builder --win nsis portable"
+    "package:windows": "electron-builder --win nsis portable --publish never"
   },
   "dependencies": {
     "papaparse": "^5.5.3",
