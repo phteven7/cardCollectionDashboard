@@ -1,0 +1,35 @@
+.DS_Store
+node_modules/
+dist/
+release/
+coverage/
+*.log
+*.tsbuildinfo
+vite.config.d.ts
+vite.config.js
+
+# Local environment/config
+.env
+.env.*
+!.env.example
+
+# Local app/user data
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+*.sqlite-shm
+*.sqlite-wal
+
+# Packaging/signing secrets
+*.p12
+*.pfx
+*.pem
+*.key
+*.cert
+*.mobileprovision
+
+# OS/editor files
+.idea/
+.vscode/
