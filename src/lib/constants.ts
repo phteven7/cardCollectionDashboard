@@ -1,7 +1,9 @@
-export const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? "0.1.4";
+export const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? "0.1.5";
+export const DEFAULT_FRAME_NAME = "Personal Collection";
 
 export const INVENTORY_HEADERS = [
   "App ID",
+  "Frame",
   "Date Purchased",
   "Quantity",
   "Player",
@@ -24,6 +26,7 @@ export const INVENTORY_HEADERS = [
 ] as const;
 
 export const CARD_LADDER_HEADERS = [
+  "Frame",
   "Date Purchased",
   "Quantity",
   "Player",

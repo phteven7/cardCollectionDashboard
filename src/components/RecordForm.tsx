@@ -26,6 +26,10 @@ export function RecordForm({ row, lookups, readOnly, saving, errors, onChange, o
       </div>
 
       <div className="form-grid">
+        <label className="full-width">
+          Frame
+          <input value={row.frameName} onChange={(event) => onChange({ ...row, frameName: event.target.value })} />
+        </label>
         <label>
           Date Purchased
           <input value={row.datePurchased} onChange={(event) => onChange({ ...row, datePurchased: event.target.value })} />
@@ -45,11 +49,6 @@ export function RecordForm({ row, lookups, readOnly, saving, errors, onChange, o
           Player
           <input value={row.player} onChange={(event) => onChange({ ...row, player: event.target.value })} />
           <span>{errorFor(errors, "player")}</span>
-        </label>
-        <label>
-          Year
-          <input value={row.year} onChange={(event) => onChange({ ...row, year: event.target.value })} />
-          <span>{errorFor(errors, "year")}</span>
         </label>
         <label>
           Set
@@ -95,15 +94,9 @@ export function RecordForm({ row, lookups, readOnly, saving, errors, onChange, o
           <span>{errorFor(errors, "condition")}</span>
         </label>
         <label>
-          Investment
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={row.investment}
-            onChange={(event) => onChange({ ...row, investment: Number(event.target.value) })}
-          />
-          <span>{errorFor(errors, "investment")}</span>
+          Year
+          <input value={row.year} onChange={(event) => onChange({ ...row, year: event.target.value })} />
+          <span>{errorFor(errors, "year")}</span>
         </label>
         <label>
           Estimated Value
@@ -115,6 +108,17 @@ export function RecordForm({ row, lookups, readOnly, saving, errors, onChange, o
             onChange={(event) => onChange({ ...row, estimatedValue: event.target.value ? Number(event.target.value) : null })}
           />
           <span>{errorFor(errors, "estimatedValue")}</span>
+        </label>
+        <label>
+          Investment
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={row.investment}
+            onChange={(event) => onChange({ ...row, investment: Number(event.target.value) })}
+          />
+          <span>{errorFor(errors, "investment")}</span>
         </label>
         <label>
           Ladder ID

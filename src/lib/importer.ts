@@ -1,5 +1,5 @@
 import Papa from "papaparse";
-import { REQUIRED_CARD_LADDER_HEADERS } from "./constants";
+import { DEFAULT_FRAME_NAME, REQUIRED_CARD_LADDER_HEADERS } from "./constants";
 import { ImportPreview, InventoryRecord, InventoryRow } from "./types";
 import { validateInventoryRow } from "./model";
 import { isoNow, uuid } from "./utils";
@@ -56,9 +56,14 @@ function buildNotes(raw: RawCsvRow) {
   return details.filter(Boolean).join(" | ");
 }
 
-function normalizeImportedRow(raw: RawCsvRow, current?: InventoryRecord): InventoryRow {
+function normalizeFrameName(value: string) {
+  return value.trim() || DEFAULT_FRAME_NAME;
+}
+
+function normalizeImportedRow(raw: RawCsvRow, current?: InventoryRecord, sourceName?: string): InventoryRow {
   return {
     appId: current?.appId ?? uuid(),
+    frameName: normalizeFrameName(readCell(raw, "Frame") || current?.frameName || sourceName || DEFAULT_FRAME_NAME),
     datePurchased: readCell(raw, "Date Purchased"),
     quantity: readNumber(raw, ["Quantity"], 1),
     player: readCell(raw, "Player"),
@@ -81,8 +86,9 @@ function normalizeImportedRow(raw: RawCsvRow, current?: InventoryRecord): Invent
   };
 }
 
-function cardMatchKey(row: Pick<InventoryRow, "datePurchased" | "quantity" | "player" | "year" | "set" | "variation" | "number" | "category" | "condition" | "investment">) {
+function cardMatchKey(row: Pick<InventoryRow, "frameName" | "datePurchased" | "quantity" | "player" | "year" | "set" | "variation" | "number" | "category" | "condition" | "investment">) {
   return [
+    row.frameName,
     row.datePurchased,
     row.quantity,
     row.player,
@@ -96,6 +102,10 @@ function cardMatchKey(row: Pick<InventoryRow, "datePurchased" | "quantity" | "pl
   ]
     .map((value) => String(value ?? "").trim().toLowerCase())
     .join("|");
+}
+
+function ladderMatchKey(row: Pick<InventoryRow, "frameName" | "ladderId">) {
+  return row.ladderId ? `${row.frameName.trim().toLowerCase()}|${row.ladderId.trim()}` : "";
 }
 
 function uniqueRecordMap(records: InventoryRecord[], keyFor: (row: InventoryRecord) => string) {
@@ -166,20 +176,21 @@ function parseSingleCardLadderPreview(
     };
   }
 
-  const existingDuplicates = duplicateIds(existingRows.map((row) => row.ladderId));
-  const importDuplicates = duplicateIds(parsed.data.map((row) => readCell(row, "Ladder ID")));
+  const candidates = parsed.data.map((raw) => normalizeImportedRow(raw, undefined, sourceName));
+  const existingDuplicates = duplicateIds(existingRows.map(ladderMatchKey));
+  const importDuplicates = duplicateIds(candidates.map(ladderMatchKey));
   const duplicateLadderIds = [...new Set([...existingDuplicates, ...importDuplicates])];
-  const byLadderId = new Map(existingRows.filter((row) => row.ladderId).map((row) => [row.ladderId, row]));
+  const byLadderId = new Map(existingRows.filter((row) => row.ladderId).map((row) => [ladderMatchKey(row), row]));
   const byMatchKey = uniqueRecordMap(existingRows.filter((row) => !row.ladderId), cardMatchKey);
 
   const rows = parsed.data.map((raw, index) => {
     const ladderId = readCell(raw, "Ladder ID");
-    const candidate = normalizeImportedRow(raw);
+    const candidate = candidates[index];
     const fallbackMatch = ladderId ? undefined : byMatchKey.get(cardMatchKey(candidate));
-    const current = ladderId ? byLadderId.get(ladderId) : fallbackMatch;
+    const current = ladderId ? byLadderId.get(ladderMatchKey(candidate)) : fallbackMatch;
     const alreadyClaimed = current ? claimedAppIds.has(current.appId) : false;
     const effectiveCurrent = alreadyClaimed ? undefined : current;
-    const normalized = normalizeImportedRow(raw, effectiveCurrent);
+    const normalized = normalizeImportedRow(raw, effectiveCurrent, sourceName);
     if (effectiveCurrent) {
       claimedAppIds.add(effectiveCurrent.appId);
     }
@@ -220,9 +231,9 @@ export function parseCardLadderFramesPreview(frames: CsvFrame[], existingRows: I
   ));
   const rows = previews.flatMap((preview) => preview.rows);
   const duplicateLadderIds = [
-    ...new Set([
-      ...previews.flatMap((preview) => preview.duplicateLadderIds),
-      ...duplicateIds(rows.map((row) => row.ladderId))
+      ...new Set([
+        ...previews.flatMap((preview) => preview.duplicateLadderIds),
+      ...duplicateIds(rows.map((row) => (row.row ? ladderMatchKey(row.row) : "")))
     ])
   ];
 
@@ -245,5 +256,7 @@ function duplicateIds(ids: string[]) {
     counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
   }
 
-  return [...counts.entries()].filter(([, count]) => count > 1).map(([id]) => id);
+  return [...counts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([id]) => id.includes("|") ? id.split("|").slice(1).join("|") : id);
 }

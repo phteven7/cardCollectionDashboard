@@ -4,6 +4,7 @@ const initSqlJs = require("sql.js");
 
 let handlersRegistered = false;
 let storePromise = null;
+const DEFAULT_FRAME_NAME = "Personal Collection";
 
 function resolveWasmPath() {
   const candidates = [
@@ -31,7 +32,7 @@ async function createStore(app) {
   const db = bytes ? new SQL.Database(bytes) : new SQL.Database();
 
   initializeSchema(db);
-  setMetaValue(db, "schemaVersion", "2");
+  setMetaValue(db, "schemaVersion", "3");
   if (!bytes) {
     setMetaValue(db, "createdAt", new Date().toISOString());
   }
@@ -73,14 +74,37 @@ function initializeSchema(db) {
       last_imported_at TEXT NOT NULL DEFAULT ''
     );
 
-    CREATE INDEX IF NOT EXISTS inventory_updated_at_idx ON inventory(updated_at DESC);
-    CREATE INDEX IF NOT EXISTS inventory_ladder_id_idx ON inventory(ladder_id);
-
     CREATE TABLE IF NOT EXISTS meta (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
   `);
+
+  ensureColumn(db, "inventory", "frame_name", `TEXT NOT NULL DEFAULT 'Personal Collection'`);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS inventory_updated_at_idx ON inventory(updated_at DESC);
+    CREATE INDEX IF NOT EXISTS inventory_frame_name_idx ON inventory(frame_name);
+    CREATE INDEX IF NOT EXISTS inventory_ladder_id_idx ON inventory(ladder_id);
+  `);
+}
+
+function ensureColumn(db, tableName, columnName, definition) {
+  const statement = db.prepare(`PRAGMA table_info(${tableName})`);
+  let exists = false;
+
+  while (statement.step()) {
+    if (String(statement.getAsObject().name ?? "") === columnName) {
+      exists = true;
+      break;
+    }
+  }
+
+  statement.free();
+
+  if (!exists) {
+    db.run(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+  }
 }
 
 function persistDatabase(dbPath, db) {
@@ -110,6 +134,7 @@ function getMetaValue(db, key) {
 function normalizeInventoryRow(row, rowNumber) {
   return {
     appId: String(row.app_id ?? ""),
+    frameName: String(row.frame_name ?? DEFAULT_FRAME_NAME) || DEFAULT_FRAME_NAME,
     datePurchased: String(row.date_purchased ?? ""),
     quantity: Number(row.quantity ?? 1),
     player: String(row.player ?? ""),
@@ -137,6 +162,7 @@ function buildSnapshot(store) {
   const statement = store.db.prepare(`
     SELECT
       app_id,
+      frame_name,
       date_purchased,
       quantity,
       player,
@@ -189,6 +215,7 @@ function upsertInventoryRow(db, row) {
   const statement = db.prepare(`
     INSERT INTO inventory (
       app_id,
+      frame_name,
       date_purchased,
       quantity,
       player,
@@ -209,8 +236,9 @@ function upsertInventoryRow(db, row) {
       updated_at,
       last_imported_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(app_id) DO UPDATE SET
+      frame_name = excluded.frame_name,
       date_purchased = excluded.date_purchased,
       quantity = excluded.quantity,
       player = excluded.player,
@@ -234,6 +262,7 @@ function upsertInventoryRow(db, row) {
 
   statement.run([
     row.appId,
+    row.frameName || DEFAULT_FRAME_NAME,
     row.datePurchased,
     row.quantity,
     row.player,

@@ -1,5 +1,6 @@
 export interface InventoryRow {
   appId: string;
+  frameName: string;
   datePurchased: string;
   quantity: number;
   player: string;

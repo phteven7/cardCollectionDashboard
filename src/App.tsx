@@ -5,7 +5,7 @@ import { InventoryTable } from "./components/InventoryTable";
 import { RecordForm } from "./components/RecordForm";
 import { StatusBanner } from "./components/StatusBanner";
 import { batchSaveInventoryRows, loadSnapshot, saveInventoryRow } from "./lib/localStore";
-import { APP_VERSION, CARD_LADDER_CATEGORIES, CARD_LADDER_CONDITIONS } from "./lib/constants";
+import { APP_VERSION, CARD_LADDER_CATEGORIES, CARD_LADDER_CONDITIONS, DEFAULT_FRAME_NAME } from "./lib/constants";
 import { parseCardLadderFramesPreview } from "./lib/importer";
 import { calculateDashboard, deriveRecord, emptyInventoryRow, filterOptions, filterRecords, sortRecords, validateInventoryRow } from "./lib/model";
 import { AppSnapshot, DerivedInventoryRecord, Filters, ImportPreview, InventoryRecord, InventoryRow, LookupValues, SortState, ValidationError } from "./lib/types";
@@ -15,6 +15,8 @@ const EMPTY_LOOKUPS: LookupValues = {
   categories: [...CARD_LADDER_CATEGORIES],
   conditions: [...CARD_LADDER_CONDITIONS]
 };
+
+const TOTAL_FRAME_NAME = "Total";
 
 function mergeLookups(lookups: LookupValues): LookupValues {
   return {
@@ -61,6 +63,8 @@ export default function App() {
   const [records, setRecords] = useState<DerivedInventoryRecord[]>([]);
   const [lookups, setLookups] = useState<LookupValues>(EMPTY_LOOKUPS);
   const [selected, setSelected] = useState<InventoryRow>(emptyInventoryRow());
+  const [activeFrameName, setActiveFrameName] = useState(TOTAL_FRAME_NAME);
+  const [newFrameName, setNewFrameName] = useState("");
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [sortState, setSortState] = useState<SortState>({ key: "updatedAt", direction: "desc" });
   const [filters, setFilters] = useState<Filters>({
@@ -127,10 +131,23 @@ export default function App() {
     setErrors([]);
   }
 
+  function handleAddFrame() {
+    const frameName = newFrameName.trim();
+    if (!frameName || frameName.toLowerCase() === TOTAL_FRAME_NAME.toLowerCase()) {
+      return;
+    }
+
+    setActiveFrameName(frameName);
+    setSelected({ ...emptyInventoryRow(lookups), frameName });
+    setNewFrameName("");
+    setErrors([]);
+  }
+
   async function handleSave() {
     const nextRow: InventoryRow = {
       ...selected,
       appId: selected.appId || uuid(),
+      frameName: selected.frameName.trim() || (activeFrameName === TOTAL_FRAME_NAME ? DEFAULT_FRAME_NAME : activeFrameName),
       createdAt: selected.createdAt || isoNow(),
       updatedAt: isoNow()
     };
@@ -156,14 +173,23 @@ export default function App() {
     }
   }
 
+  function frameNameForFile(file: File, multiFileImport: boolean) {
+    if (!multiFileImport && activeFrameName !== TOTAL_FRAME_NAME) {
+      return activeFrameName;
+    }
+
+    return file.name.replace(/\.[^.]+$/, "").replace(/^CL DATA\s*-\s*/i, "").trim() || DEFAULT_FRAME_NAME;
+  }
+
   async function handleImportFiles(files: File[]) {
     if (!files.length) {
       setPreview(null);
       return;
     }
 
+    const multiFileImport = files.length > 1;
     const frames = await Promise.all(files.map(async (file) => ({
-      name: file.name,
+      name: frameNameForFile(file, multiFileImport),
       text: await file.text()
     })));
     setPreview(parseCardLadderFramesPreview(frames, records));
@@ -190,15 +216,28 @@ export default function App() {
     }
   }
 
+  const frameNames = useMemo(() => (
+    [TOTAL_FRAME_NAME, ...new Set([
+      activeFrameName === TOTAL_FRAME_NAME ? DEFAULT_FRAME_NAME : activeFrameName,
+      ...records.map((record) => record.frameName || DEFAULT_FRAME_NAME)
+    ])]
+  ), [activeFrameName, records]);
+
+  const frameRecords = useMemo(() => (
+    activeFrameName === TOTAL_FRAME_NAME
+      ? records
+      : records.filter((record) => record.frameName === activeFrameName)
+  ), [activeFrameName, records]);
+
   const visibleRecords = useMemo(() => {
-    const filtered = filterRecords(records, filters);
+    const filtered = filterRecords(frameRecords, filters);
     return sortRecords(filtered, sortState.key, sortState.direction);
-  }, [filters, records, sortState.direction, sortState.key]);
+  }, [filters, frameRecords, sortState.direction, sortState.key]);
 
   const stats = useMemo(() => calculateDashboard(visibleRecords), [visibleRecords]);
-  const players = useMemo(() => filterOptions(records, "player"), [records]);
-  const years = useMemo(() => filterOptions(records, "year"), [records]);
-  const sets = useMemo(() => filterOptions(records, "set"), [records]);
+  const players = useMemo(() => filterOptions(frameRecords, "player"), [frameRecords]);
+  const years = useMemo(() => filterOptions(frameRecords, "year"), [frameRecords]);
+  const sets = useMemo(() => filterOptions(frameRecords, "set"), [frameRecords]);
 
   return (
     <main className="app-shell">
@@ -225,6 +264,36 @@ export default function App() {
 
         <Dashboard stats={stats} />
       </div>
+
+      <section className="frame-bar" aria-label="Frames">
+        <div className="frame-tabs">
+          {frameNames.map((frameName) => (
+            <button
+              key={frameName}
+              type="button"
+              className={frameName === activeFrameName ? "frame-tab frame-tab--active" : "frame-tab"}
+              onClick={() => setActiveFrameName(frameName)}
+            >
+              {frameName}
+            </button>
+          ))}
+        </div>
+        <div className="new-frame-control">
+          <input
+            value={newFrameName}
+            onChange={(event) => setNewFrameName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                handleAddFrame();
+              }
+            }}
+            placeholder="New frame name"
+          />
+          <button type="button" className="secondary-button" onClick={handleAddFrame}>
+            Add Frame
+          </button>
+        </div>
+      </section>
 
       <div className="main-grid">
         <InventoryTable
@@ -256,7 +325,10 @@ export default function App() {
             onChange={setSelected}
             onSave={() => void handleSave()}
             onNew={() => {
-              setSelected(emptyInventoryRow(lookups));
+              setSelected({
+                ...emptyInventoryRow(lookups),
+                frameName: activeFrameName === TOTAL_FRAME_NAME ? DEFAULT_FRAME_NAME : activeFrameName
+              });
               setErrors([]);
             }}
           />
@@ -265,6 +337,8 @@ export default function App() {
             preview={preview}
             readOnly={statusMode !== "ready"}
             importing={importing}
+            activeFrameName={activeFrameName}
+            totalFrameName={TOTAL_FRAME_NAME}
             onChooseFiles={(files) => void handleImportFiles(files)}
             onApply={() => void handleApplyImport()}
           />

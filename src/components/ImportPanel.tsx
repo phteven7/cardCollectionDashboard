@@ -4,16 +4,31 @@ interface ImportPanelProps {
   preview: ImportPreview | null;
   readOnly: boolean;
   importing: boolean;
+  activeFrameName: string;
+  totalFrameName: string;
   onChooseFiles: (files: File[]) => void;
   onApply: () => void;
 }
 
-export function ImportPanel({ preview, readOnly, importing, onChooseFiles, onApply }: ImportPanelProps) {
+export function ImportPanel({
+  preview,
+  readOnly,
+  importing,
+  activeFrameName,
+  totalFrameName,
+  onChooseFiles,
+  onApply
+}: ImportPanelProps) {
+  const helperText = activeFrameName === totalFrameName
+    ? "Select one or more CSV files. Each file imports as its own frame."
+    : `Single-file imports go into ${activeFrameName}. Multi-file imports use each file name as a frame.`;
+
   return (
     <section className="panel">
       <div className="panel-header">
         <h2>Frame Import</h2>
       </div>
+      <p className="helper-text">{helperText}</p>
       <input
         type="file"
         accept=".csv,text/csv"

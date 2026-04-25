@@ -1,10 +1,12 @@
 import { InventoryRow, DerivedInventoryRecord, DashboardStats, Filters, LookupValues, ValidationError } from "./types";
+import { DEFAULT_FRAME_NAME } from "./constants";
 import { isValidDateString, uniqueSorted } from "./utils";
 
 export function emptyInventoryRow(lookups?: LookupValues): InventoryRow {
   void lookups;
   return {
     appId: "",
+    frameName: DEFAULT_FRAME_NAME,
     datePurchased: "",
     quantity: 1,
     player: "",

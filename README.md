@@ -1,6 +1,6 @@
 # CardTracker
 
-CardTracker is a local-first inventory dashboard for a single collector. The desktop app stores inventory in a local SQLite database on the user's machine and keeps the Card Ladder CSV import workflow for bulk updates.
+CardTracker is a local-first inventory dashboard for a single collector. The desktop app stores inventory in a local SQLite database on the user's machine and supports named collection frames for bulk CSV imports and filtered inventory views.
 
 ## Stack
 
@@ -39,15 +39,19 @@ App ID,Date Purchased,Quantity,Player,Year,Set,Variation,Number,Category,Conditi
 
 Category and condition suggestions are derived from the records already stored in the local database.
 
-## CSV import
+## Frames and CSV import
 
-Card Ladder CSV imports are still supported. The import expects this exact header row:
+Inventory can be organized into named frames such as Personal Collection, Basketball, or any other collection slice. The Total frame is automatic and rolls up every saved frame.
+
+Card Ladder-style CSV imports are supported. The importer accepts the app's native `Estimated Value` column or frame exports that use `Current Value`. Multiple selected CSV files import as separate frames using each file name; a single CSV imported while a specific frame is selected goes into that frame.
+
+The native app export/import fields are:
 
 ```text
-Date Purchased,Quantity,Player,Year,Set,Variation,Number,Category,Condition,Investment,Estimated Value,Ladder ID,Notes,Date Sold,Sold Price,Image
+Frame,Date Purchased,Quantity,Player,Year,Set,Variation,Number,Category,Condition,Investment,Estimated Value,Ladder ID,Notes,Date Sold,Sold Price,Image
 ```
 
-The app previews the import, flags invalid rows, and upserts matched records by `Ladder ID`.
+The app previews the import, flags invalid rows, and upserts matched records by frame-scoped `Ladder ID` or by a fallback card fingerprint when a row has no Ladder ID.
 
 ## GitHub workflow
 

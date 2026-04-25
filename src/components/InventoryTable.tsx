@@ -29,7 +29,7 @@ function SortButton({
   const active = sortState.key === field;
   return (
     <button type="button" className="sort-button" onClick={() => onSort(field)}>
-      {label} {active ? (sortState.direction === "asc" ? "↑" : "↓") : ""}
+      {label} {active ? (sortState.direction === "asc" ? "^" : "v") : ""}
     </button>
   );
 }
@@ -112,13 +112,14 @@ export function InventoryTable({
           <thead>
             <tr>
               <th>Image</th>
+              <th><SortButton label="Frame" field="frameName" sortState={sortState} onSort={onSort} /></th>
               <th><SortButton label="Player" field="player" sortState={sortState} onSort={onSort} /></th>
-              <th><SortButton label="Year" field="year" sortState={sortState} onSort={onSort} /></th>
               <th><SortButton label="Set" field="set" sortState={sortState} onSort={onSort} /></th>
               <th>Category</th>
               <th>Condition</th>
-              <th><SortButton label="Investment" field="investment" sortState={sortState} onSort={onSort} /></th>
+              <th><SortButton label="Year" field="year" sortState={sortState} onSort={onSort} /></th>
               <th><SortButton label="Estimated" field="estimatedValue" sortState={sortState} onSort={onSort} /></th>
+              <th><SortButton label="Investment" field="investment" sortState={sortState} onSort={onSort} /></th>
               <th>Status</th>
             </tr>
           </thead>
@@ -140,13 +141,14 @@ export function InventoryTable({
                     </span>
                   )}
                 </td>
+                <td>{record.frameName}</td>
                 <td>{record.player}</td>
-                <td>{record.year}</td>
                 <td>{record.set}{record.variation ? ` / ${record.variation}` : ""}</td>
                 <td>{record.category}</td>
                 <td>{record.condition}</td>
-                <td>{formatCurrency(record.investment)}</td>
+                <td>{record.year}</td>
                 <td>{formatCurrency(record.estimatedValue ?? 0)}</td>
+                <td>{formatCurrency(record.investment)}</td>
                 <td>{record.status}</td>
               </tr>
             ))}
