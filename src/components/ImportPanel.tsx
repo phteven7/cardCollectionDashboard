@@ -4,21 +4,22 @@ interface ImportPanelProps {
   preview: ImportPreview | null;
   readOnly: boolean;
   importing: boolean;
-  onChooseFile: (file: File | null) => void;
+  onChooseFiles: (files: File[]) => void;
   onApply: () => void;
 }
 
-export function ImportPanel({ preview, readOnly, importing, onChooseFile, onApply }: ImportPanelProps) {
+export function ImportPanel({ preview, readOnly, importing, onChooseFiles, onApply }: ImportPanelProps) {
   return (
     <section className="panel">
       <div className="panel-header">
-        <h2>Card Ladder Import</h2>
+        <h2>Frame Import</h2>
       </div>
       <input
         type="file"
         accept=".csv,text/csv"
+        multiple
         disabled={readOnly}
-        onChange={(event) => onChooseFile(event.target.files?.[0] ?? null)}
+        onChange={(event) => onChooseFiles(Array.from(event.target.files ?? []))}
       />
       {readOnly ? <p className="helper-text">Imports are unavailable until the local database loads.</p> : null}
 
@@ -36,6 +37,7 @@ export function ImportPanel({ preview, readOnly, importing, onChooseFile, onAppl
             <table>
               <thead>
                 <tr>
+                  <th>Frame</th>
                   <th>Row</th>
                   <th>Action</th>
                   <th>Ladder ID</th>
@@ -44,11 +46,12 @@ export function ImportPanel({ preview, readOnly, importing, onChooseFile, onAppl
               </thead>
               <tbody>
                 {preview.rows.slice(0, 25).map((row) => (
-                  <tr key={`${row.sourceRowNumber}-${row.ladderId}`}>
+                  <tr key={`${row.sourceName ?? "frame"}-${row.sourceRowNumber}-${row.ladderId}`}>
+                    <td>{row.sourceName || "CSV"}</td>
                     <td>{row.sourceRowNumber}</td>
                     <td>{row.action}</td>
-                    <td>{row.ladderId || "—"}</td>
-                    <td>{row.errors.join("; ") || "—"}</td>
+                    <td>{row.ladderId || "-"}</td>
+                    <td>{row.errors.join("; ") || "-"}</td>
                   </tr>
                 ))}
               </tbody>

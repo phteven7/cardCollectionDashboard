@@ -52,6 +52,7 @@ export interface ValidationError {
 export interface ImportPreviewRow {
   action: "new" | "matched" | "invalid";
   sourceRowNumber: number;
+  sourceName?: string;
   ladderId: string;
   appId?: string;
   errors: string[];

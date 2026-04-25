@@ -1,6 +1,6 @@
 {
   "name": "cardtracker",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "private": true,
   "description": "Local-first card collection dashboard backed by a local SQLite database.",
   "main": "electron/main.cjs",

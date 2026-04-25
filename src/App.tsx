@@ -6,7 +6,7 @@ import { RecordForm } from "./components/RecordForm";
 import { StatusBanner } from "./components/StatusBanner";
 import { batchSaveInventoryRows, loadSnapshot, saveInventoryRow } from "./lib/localStore";
 import { APP_VERSION, CARD_LADDER_CATEGORIES, CARD_LADDER_CONDITIONS } from "./lib/constants";
-import { parseCardLadderPreview } from "./lib/importer";
+import { parseCardLadderFramesPreview } from "./lib/importer";
 import { calculateDashboard, deriveRecord, emptyInventoryRow, filterOptions, filterRecords, sortRecords, validateInventoryRow } from "./lib/model";
 import { AppSnapshot, DerivedInventoryRecord, Filters, ImportPreview, InventoryRecord, InventoryRow, LookupValues, SortState, ValidationError } from "./lib/types";
 import { isoNow, uuid } from "./lib/utils";
@@ -156,14 +156,17 @@ export default function App() {
     }
   }
 
-  async function handleImportFile(file: File | null) {
-    if (!file) {
+  async function handleImportFiles(files: File[]) {
+    if (!files.length) {
       setPreview(null);
       return;
     }
 
-    const text = await file.text();
-    setPreview(parseCardLadderPreview(text, records));
+    const frames = await Promise.all(files.map(async (file) => ({
+      name: file.name,
+      text: await file.text()
+    })));
+    setPreview(parseCardLadderFramesPreview(frames, records));
   }
 
   async function handleApplyImport() {
@@ -262,7 +265,7 @@ export default function App() {
             preview={preview}
             readOnly={statusMode !== "ready"}
             importing={importing}
-            onChooseFile={(file) => void handleImportFile(file)}
+            onChooseFiles={(files) => void handleImportFiles(files)}
             onApply={() => void handleApplyImport()}
           />
         </div>
