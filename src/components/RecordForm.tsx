@@ -5,9 +5,11 @@ interface RecordFormProps {
   lookups: LookupValues;
   readOnly: boolean;
   saving: boolean;
+  deleting: boolean;
   errors: ValidationError[];
   onChange: (row: InventoryRow) => void;
   onSave: () => void;
+  onDelete: () => void;
   onNew: () => void;
 }
 
@@ -15,7 +17,69 @@ function errorFor(errors: ValidationError[], field: ValidationError["field"]) {
   return errors.find((error) => error.field === field)?.message;
 }
 
-export function RecordForm({ row, lookups, readOnly, saving, errors, onChange, onSave, onNew }: RecordFormProps) {
+function imageSearchQuery(row: InventoryRow) {
+  return [
+    row.year,
+    row.set,
+    row.player,
+    row.variation,
+    row.number ? `#${row.number}` : "",
+    row.condition,
+    "card"
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function RecordForm({
+  row,
+  lookups,
+  readOnly,
+  saving,
+  deleting,
+  errors,
+  onChange,
+  onSave,
+  onDelete,
+  onNew
+}: RecordFormProps) {
+  const query = imageSearchQuery(row);
+
+  function openImageSearch() {
+    if (!query) {
+      return;
+    }
+
+    const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
+    if (window.cardTracker?.openExternal) {
+      void window.cardTracker.openExternal(url);
+      return;
+    }
+
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  async function copyImageQuery() {
+    if (!query || !navigator.clipboard) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(query);
+  }
+
+  async function pasteImageUrl() {
+    if (!navigator.clipboard) {
+      return;
+    }
+
+    const value = (await navigator.clipboard.readText()).trim();
+    if (value) {
+      onChange({ ...row, image: value });
+    }
+  }
+
   return (
     <section className="panel editor-panel">
       <div className="panel-header">
@@ -149,9 +213,36 @@ export function RecordForm({ row, lookups, readOnly, saving, errors, onChange, o
           <input value={row.image} onChange={(event) => onChange({ ...row, image: event.target.value })} />
         </label>
       </div>
-      <button type="button" className="primary-button" disabled={readOnly || saving} onClick={onSave}>
-        {saving ? "Saving..." : "Save Record"}
-      </button>
+      <div className="image-helper">
+        <div>
+          <span>Image Search</span>
+          <strong>{query || "Fill in card details to build a search query"}</strong>
+        </div>
+        <div className="image-helper-actions">
+          <button type="button" className="secondary-button" disabled={!query} onClick={openImageSearch}>
+            Open Search
+          </button>
+          <button type="button" className="secondary-button" disabled={!query || !navigator.clipboard} onClick={() => void copyImageQuery()}>
+            Copy Query
+          </button>
+          <button type="button" className="secondary-button" disabled={!navigator.clipboard} onClick={() => void pasteImageUrl()}>
+            Paste URL
+          </button>
+        </div>
+      </div>
+      <div className="editor-actions">
+        <button type="button" className="primary-button" disabled={readOnly || saving || deleting} onClick={onSave}>
+          {saving ? "Saving..." : "Save Record"}
+        </button>
+        <button
+          type="button"
+          className="danger-button"
+          disabled={readOnly || deleting || !row.appId}
+          onClick={onDelete}
+        >
+          {deleting ? "Removing..." : "Remove Card"}
+        </button>
+      </div>
       {readOnly ? <p className="helper-text">Edits are unavailable until the local database loads.</p> : null}
     </section>
   );

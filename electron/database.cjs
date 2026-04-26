@@ -329,6 +329,26 @@ async function importRows(app, rows) {
   return buildSnapshot(store);
 }
 
+async function deleteRecord(app, appId) {
+  const store = await getStore(app);
+  const deletedAt = new Date().toISOString();
+
+  store.db.run("BEGIN");
+  try {
+    const statement = store.db.prepare("DELETE FROM inventory WHERE app_id = ?");
+    statement.run([appId]);
+    statement.free();
+    setMetaValue(store.db, "lastWriteAt", deletedAt);
+    store.db.run("COMMIT");
+  } catch (error) {
+    store.db.run("ROLLBACK");
+    throw error;
+  }
+
+  persistDatabase(store.dbPath, store.db);
+  return buildSnapshot(store);
+}
+
 function registerDatabaseHandlers(app, ipcMain) {
   if (handlersRegistered) {
     return;
@@ -337,6 +357,7 @@ function registerDatabaseHandlers(app, ipcMain) {
   ipcMain.handle("cardtracker:load-snapshot", () => loadSnapshot(app));
   ipcMain.handle("cardtracker:save-record", (_event, row) => saveRecord(app, row));
   ipcMain.handle("cardtracker:import-rows", (_event, rows) => importRows(app, rows));
+  ipcMain.handle("cardtracker:delete-record", (_event, appId) => deleteRecord(app, appId));
 
   handlersRegistered = true;
 }

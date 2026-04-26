@@ -73,9 +73,6 @@ export interface DashboardStats {
   totalQuantity: number;
   totalInvestment: number;
   totalEstimatedValue: number;
-  unrealizedGainLoss: number;
-  realizedProfitLoss: number;
-  soldCount: number;
 }
 
 export interface SortState {
@@ -86,6 +83,7 @@ export interface SortState {
 export interface Filters {
   search: string;
   status: "all" | "active" | "sold";
+  image: "all" | "missing" | "with-image";
   player: string;
   year: string;
   set: string;
@@ -97,6 +95,8 @@ export interface CardTrackerApi {
   loadSnapshot(): Promise<AppSnapshot>;
   saveRecord(row: InventoryRow): Promise<AppSnapshot>;
   importRows(rows: InventoryRow[]): Promise<AppSnapshot>;
+  deleteRecord(appId: string): Promise<AppSnapshot>;
+  openExternal(url: string): Promise<void>;
 }
 
 declare global {

@@ -1,4 +1,4 @@
-export const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? "0.1.5";
+export const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? "0.1.6";
 export const DEFAULT_FRAME_NAME = "Personal Collection";
 
 export const INVENTORY_HEADERS = [

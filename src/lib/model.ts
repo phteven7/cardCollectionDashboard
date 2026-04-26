@@ -91,21 +91,13 @@ export function calculateDashboard(records: DerivedInventoryRecord[]): Dashboard
       stats.totalQuantity += record.quantity;
       stats.totalInvestment += record.investment;
       stats.totalEstimatedValue += record.estimatedValue ?? 0;
-      stats.unrealizedGainLoss += record.unrealizedDelta;
-      stats.realizedProfitLoss += record.realizedProfit;
-      if (record.status === "sold") {
-        stats.soldCount += 1;
-      }
       return stats;
     },
     {
       totalRows: 0,
       totalQuantity: 0,
       totalInvestment: 0,
-      totalEstimatedValue: 0,
-      unrealizedGainLoss: 0,
-      realizedProfitLoss: 0,
-      soldCount: 0
+      totalEstimatedValue: 0
     }
   );
 }
@@ -115,6 +107,14 @@ export function filterRecords(records: DerivedInventoryRecord[], filters: Filter
 
   return records.filter((record) => {
     if (filters.status !== "all" && record.status !== filters.status) {
+      return false;
+    }
+
+    if (filters.image === "missing" && record.image) {
+      return false;
+    }
+
+    if (filters.image === "with-image" && !record.image) {
       return false;
     }
 

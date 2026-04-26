@@ -19,3 +19,7 @@ export function saveInventoryRow(row: InventoryRow): Promise<AppSnapshot> {
 export function batchSaveInventoryRows(rows: InventoryRow[]): Promise<AppSnapshot> {
   return getDesktopApi().importRows(rows);
 }
+
+export function deleteInventoryRow(appId: string): Promise<AppSnapshot> {
+  return getDesktopApi().deleteRecord(appId);
+}

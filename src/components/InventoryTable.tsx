@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { DerivedInventoryRecord, Filters, LookupValues, SortState } from "../lib/types";
 import { formatCurrency } from "../lib/utils";
 
@@ -8,6 +9,7 @@ interface InventoryTableProps {
   sortState: SortState;
   onSort: (key: SortState["key"]) => void;
   onSelect: (record: DerivedInventoryRecord) => void;
+  onDelete: (record: DerivedInventoryRecord) => void;
   selectedAppId: string;
   players: string[];
   years: string[];
@@ -41,6 +43,7 @@ export function InventoryTable({
   sortState,
   onSort,
   onSelect,
+  onDelete,
   selectedAppId,
   players,
   years,
@@ -51,7 +54,9 @@ export function InventoryTable({
     <section className="panel inventory-panel">
       <div className="panel-header">
         <h2>Inventory</h2>
-        <span>{records.length} visible cards</span>
+        <div className="inventory-header-actions">
+          <span>{records.length} visible cards</span>
+        </div>
       </div>
 
       <div className="filters-grid">
@@ -64,6 +69,11 @@ export function InventoryTable({
           <option value="all">All statuses</option>
           <option value="active">Active</option>
           <option value="sold">Sold</option>
+        </select>
+        <select value={filters.image} onChange={(event) => setFilters({ ...filters, image: event.target.value as Filters["image"] })}>
+          <option value="all">All images</option>
+          <option value="missing">Missing images</option>
+          <option value="with-image">With images</option>
         </select>
         <select value={filters.player} onChange={(event) => setFilters({ ...filters, player: event.target.value })}>
           <option value="">All players</option>
@@ -107,54 +117,154 @@ export function InventoryTable({
         </select>
       </div>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Image</th>
-              <th><SortButton label="Frame" field="frameName" sortState={sortState} onSort={onSort} /></th>
-              <th><SortButton label="Player" field="player" sortState={sortState} onSort={onSort} /></th>
-              <th><SortButton label="Set" field="set" sortState={sortState} onSort={onSort} /></th>
-              <th>Category</th>
-              <th>Condition</th>
-              <th><SortButton label="Year" field="year" sortState={sortState} onSort={onSort} /></th>
-              <th><SortButton label="Estimated" field="estimatedValue" sortState={sortState} onSort={onSort} /></th>
-              <th><SortButton label="Investment" field="investment" sortState={sortState} onSort={onSort} /></th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((record) => (
-              <tr
-                key={record.appId}
-                className={record.appId === selectedAppId ? "selected-row" : undefined}
-                onClick={() => onSelect(record)}
-              >
-                <td>
-                  {record.image ? (
-                    <span className="inventory-thumb-frame">
-                      <img className="inventory-thumb" src={record.image} alt={`${record.player} card`} loading="lazy" />
-                    </span>
-                  ) : (
-                    <span className="inventory-thumb inventory-thumb--empty" aria-label="No image available">
-                      No image
-                    </span>
-                  )}
-                </td>
-                <td>{record.frameName}</td>
-                <td>{record.player}</td>
-                <td>{record.set}{record.variation ? ` / ${record.variation}` : ""}</td>
-                <td>{record.category}</td>
-                <td>{record.condition}</td>
-                <td>{record.year}</td>
-                <td>{formatCurrency(record.estimatedValue ?? 0)}</td>
-                <td>{formatCurrency(record.investment)}</td>
-                <td>{record.status}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <InventoryViews
+        records={records}
+        selectedAppId={selectedAppId}
+        sortState={sortState}
+        onSort={onSort}
+        onSelect={onSelect}
+        onDelete={onDelete}
+      />
     </section>
+  );
+}
+
+function InventoryViews({
+  records,
+  selectedAppId,
+  sortState,
+  onSort,
+  onSelect,
+  onDelete
+}: {
+  records: DerivedInventoryRecord[];
+  selectedAppId: string;
+  sortState: SortState;
+  onSort: (key: SortState["key"]) => void;
+  onSelect: (record: DerivedInventoryRecord) => void;
+  onDelete: (record: DerivedInventoryRecord) => void;
+}) {
+  const [view, setView] = useState<"table" | "gallery">("table");
+
+  return (
+    <>
+      <div className="view-toggle view-toggle--inline" aria-label="Inventory view">
+        <button
+          type="button"
+          className={view === "table" ? "view-toggle-button view-toggle-button--active" : "view-toggle-button"}
+          onClick={() => setView("table")}
+        >
+          Table
+        </button>
+        <button
+          type="button"
+          className={view === "gallery" ? "view-toggle-button view-toggle-button--active" : "view-toggle-button"}
+          onClick={() => setView("gallery")}
+        >
+          Gallery
+        </button>
+      </div>
+
+      {view === "table" ? (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th><SortButton label="Frame" field="frameName" sortState={sortState} onSort={onSort} /></th>
+                <th><SortButton label="Player" field="player" sortState={sortState} onSort={onSort} /></th>
+                <th><SortButton label="Category" field="category" sortState={sortState} onSort={onSort} /></th>
+                <th><SortButton label="Condition" field="condition" sortState={sortState} onSort={onSort} /></th>
+                <th><SortButton label="Year" field="year" sortState={sortState} onSort={onSort} /></th>
+                <th><SortButton label="Estimated" field="estimatedValue" sortState={sortState} onSort={onSort} /></th>
+                <th><SortButton label="Investment" field="investment" sortState={sortState} onSort={onSort} /></th>
+                <th><SortButton label="Set" field="set" sortState={sortState} onSort={onSort} /></th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((record) => (
+                <tr
+                  key={record.appId}
+                  className={record.appId === selectedAppId ? "selected-row" : undefined}
+                  onClick={() => onSelect(record)}
+                >
+                  <td>
+                    {record.image ? (
+                      <span className="inventory-thumb-frame">
+                        <img className="inventory-thumb" src={record.image} alt={`${record.player} card`} loading="lazy" />
+                      </span>
+                    ) : (
+                      <span className="inventory-thumb inventory-thumb--empty" aria-label="No image available">
+                        No image
+                      </span>
+                    )}
+                  </td>
+                  <td>{record.frameName}</td>
+                  <td>{record.player}</td>
+                  <td>{record.category}</td>
+                  <td>{record.condition}</td>
+                  <td>{record.year}</td>
+                  <td>{formatCurrency(record.estimatedValue ?? 0)}</td>
+                  <td>{formatCurrency(record.investment)}</td>
+                  <td>{record.set}{record.variation ? ` / ${record.variation}` : ""}</td>
+                  <td>{record.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="gallery-wrap">
+          {records.map((record) => (
+            <div
+              key={record.appId}
+              role="button"
+              tabIndex={0}
+              className={record.appId === selectedAppId ? "gallery-card gallery-card--selected" : "gallery-card"}
+              onClick={() => onSelect(record)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelect(record);
+                }
+              }}
+            >
+              <span className="gallery-image">
+                {record.image ? (
+                  <img src={record.image} alt={`${record.player} card`} loading="lazy" />
+                ) : (
+                  <span>No image</span>
+                )}
+              </span>
+              <span className="gallery-body">
+                <strong>{record.player || "Unknown player"}</strong>
+                <span>{[record.year, record.condition].filter(Boolean).join(" / ") || "Unspecified"}</span>
+                <span>{record.set}{record.variation ? ` / ${record.variation}` : ""}</span>
+                <span>{formatCurrency(record.estimatedValue ?? 0)}</span>
+              </span>
+              <span
+                role="button"
+                tabIndex={0}
+                className="gallery-remove"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete(record);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onDelete(record);
+                  }
+                }}
+              >
+                Remove
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
   );
 }

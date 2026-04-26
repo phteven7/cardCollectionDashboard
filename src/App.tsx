@@ -4,7 +4,7 @@ import { ImportPanel } from "./components/ImportPanel";
 import { InventoryTable } from "./components/InventoryTable";
 import { RecordForm } from "./components/RecordForm";
 import { StatusBanner } from "./components/StatusBanner";
-import { batchSaveInventoryRows, loadSnapshot, saveInventoryRow } from "./lib/localStore";
+import { batchSaveInventoryRows, deleteInventoryRow, loadSnapshot, saveInventoryRow } from "./lib/localStore";
 import { APP_VERSION, CARD_LADDER_CATEGORIES, CARD_LADDER_CONDITIONS, DEFAULT_FRAME_NAME } from "./lib/constants";
 import { parseCardLadderFramesPreview } from "./lib/importer";
 import { calculateDashboard, deriveRecord, emptyInventoryRow, filterOptions, filterRecords, sortRecords, validateInventoryRow } from "./lib/model";
@@ -70,6 +70,7 @@ export default function App() {
   const [filters, setFilters] = useState<Filters>({
     search: "",
     status: "all",
+    image: "all",
     player: "",
     year: "",
     set: "",
@@ -83,6 +84,7 @@ export default function App() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
 
@@ -216,6 +218,35 @@ export default function App() {
     }
   }
 
+  async function handleDeleteRecord(record: InventoryRow | DerivedInventoryRecord) {
+    if (!record.appId) {
+      return;
+    }
+
+    const cardName = [record.year, record.player, record.set].filter(Boolean).join(" ") || "this card";
+    if (!window.confirm(`Remove ${cardName} from inventory?`)) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const snapshot = await deleteInventoryRow(record.appId);
+      applySnapshot(snapshot);
+      setSelected({
+        ...emptyInventoryRow(lookups),
+        frameName: activeFrameName === TOTAL_FRAME_NAME ? DEFAULT_FRAME_NAME : activeFrameName
+      });
+      setErrors([]);
+      setStatusMode("ready");
+      setStatusMessage(`Removed ${cardName} from ${snapshot.databaseName}.`);
+    } catch (error) {
+      setStatusMode("error");
+      setStatusMessage(error instanceof Error ? error.message : "Delete failed.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const frameNames = useMemo(() => (
     [TOTAL_FRAME_NAME, ...new Set([
       activeFrameName === TOTAL_FRAME_NAME ? DEFAULT_FRAME_NAME : activeFrameName,
@@ -306,6 +337,7 @@ export default function App() {
             direction: current.key === key && current.direction === "asc" ? "desc" : "asc"
           }))}
           onSelect={handleSelect}
+          onDelete={(record) => void handleDeleteRecord(record)}
           selectedAppId={selected.appId}
           players={players}
           years={years}
@@ -321,9 +353,11 @@ export default function App() {
             lookups={lookups}
             readOnly={statusMode !== "ready"}
             saving={saving}
+            deleting={deleting}
             errors={errors}
             onChange={setSelected}
             onSave={() => void handleSave()}
+            onDelete={() => void handleDeleteRecord(selected)}
             onNew={() => {
               setSelected({
                 ...emptyInventoryRow(lookups),

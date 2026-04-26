@@ -1,5 +1,5 @@
 const path = require("node:path");
-const { app, BrowserWindow, dialog, ipcMain } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const { registerDatabaseHandlers } = require("./database.cjs");
 const { startServer } = require("../launcher/server.cjs");
 
@@ -31,6 +31,7 @@ function createWindow(url) {
 async function boot() {
   try {
     registerDatabaseHandlers(app, ipcMain);
+    ipcMain.handle("cardtracker:open-external", (_event, url) => shell.openExternal(url));
     serverHandle = await startServer({ open: false });
     createWindow(serverHandle.url);
   } catch (error) {
